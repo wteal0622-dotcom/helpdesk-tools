@@ -46,6 +46,10 @@ h1{font-size:18px;margin:0;font-weight:700;letter-spacing:.2px}
 .main small{display:block;font-size:14px;font-weight:600;opacity:.85;margin-top:4px;letter-spacing:0}
 .main.av{background:var(--av);box-shadow:0 6px 0 #1d4ed8}
 .main.av:active{box-shadow:0 3px 0 #1d4ed8}
+.hold{width:100%;margin-top:14px;border:0;border-radius:18px;padding:20px 12px;font-size:22px;font-weight:800;color:#fff;background:#7c3aed;box-shadow:0 5px 0 #5b21b6;cursor:pointer;touch-action:manipulation;letter-spacing:.3px}
+.hold:active{transform:translateY(3px);box-shadow:0 2px 0 #5b21b6}
+.hold small{display:block;font-size:14px;font-weight:600;opacity:.85;margin-top:2px;letter-spacing:0}
+.sec.go{background:#123222;border-color:#1f5135;color:#86efac}
 .row{display:flex;gap:10px;margin-top:14px}
 .sec{flex:1;background:var(--card);border:1px solid var(--line);color:var(--txt);border-radius:14px;padding:16px 8px;font-size:17px;font-weight:700;cursor:pointer;touch-action:manipulation}
 .sec span{display:block;font-size:13px;color:var(--dim);font-weight:500;margin-top:2px}
@@ -102,6 +106,7 @@ input[type=number]{width:90px;min-width:0}
   <div class="bar" id="bar"><i id="fill"></i></div>
 
   <button class="main" id="main">CALL ENDED<small>Start wrap-up timer</small></button>
+  <button class="hold" id="hold">HOLD<small>Caller on hold · 3:00 max</small></button>
   <div class="row" id="row"></div>
 
   <section class="card" aria-label="Today">
@@ -112,6 +117,7 @@ input[type=number]{width:90px;min-width:0}
       <div><b id="sOn">–</b><span>on time</span></div>
     </div>
     <div class="recent" id="recent"></div>
+    <div class="week" id="holds"></div>
     <div class="week" id="week"></div>
   </section>
 
@@ -121,6 +127,7 @@ input[type=number]{width:90px;min-width:0}
       <li>The second you hang up, tap <b>CALL ENDED</b>.</li>
       <li>The alarm goes off before your limit (30 seconds by default). That's your cue to wrap up your notes.</li>
       <li>Tap <b>AVAILABLE</b> when you go back to Available. Your time gets logged.</li>
+      <li>Putting a caller on hold? Tap purple <b>HOLD</b>. The alarm goes off before the 3:00 max. Tap <b>BACK WITH CALLER</b> when you pick up. If the call ends while they're on hold, tap <b>Call ended</b> and your wrap-up timer starts.</li>
       <li>Keep this screen open while you work. It stays awake while a timer runs.</li>
     </ol>
     <p><b>Add it to your home screen.</b> On iPhone, tap Share, then Add to Home Screen. On Android, tap the ⋮ menu, then Add to Home screen.</p>
@@ -144,6 +151,8 @@ input[type=number]{width:90px;min-width:0}
     <div class="f" id="customRow" hidden><label for="custom">Custom limit (seconds)</label><input type="number" id="custom" min="30" max="900" step="5"></div>
     <div class="f"><label for="lead">Alarm before limit<small>Time you get to finish your notes</small></label>
       <select id="lead"><option value="15">15 sec</option><option value="20">20 sec</option><option value="30">30 sec</option><option value="45">45 sec</option><option value="60">60 sec</option></select></div>
+    <div class="f"><label for="holdMax">Max hold time<small>Check back with the caller by this time</small></label><select id="holdMax"><option value="120">2:00</option><option value="180">3:00</option><option value="240">4:00</option><option value="300">5:00</option></select></div>
+    <div class="f"><label for="hlead">Hold alarm before max</label><select id="hlead"><option value="15">15 sec</option><option value="20">20 sec</option><option value="30">30 sec</option><option value="45">45 sec</option><option value="60">60 sec</option></select></div>
     <div class="f"><label for="brk">Break length</label><select id="brk"><option value="10">10 min</option><option value="15">15 min</option><option value="20">20 min</option></select></div>
     <div class="f"><label for="lunch">Lunch length</label><select id="lunch"><option value="30">30 min</option><option value="45">45 min</option><option value="60">60 min</option></select></div>
     <div class="f"><label for="plead">Break/lunch heads-up</label><select id="plead"><option value="60">1 min before</option><option value="120">2 min before</option><option value="180">3 min before</option><option value="300">5 min before</option></select></div>
@@ -160,11 +169,14 @@ input[type=number]{width:90px;min-width:0}
 <script>
 (()=>{
 const $=s=>document.getElementById(s);
-const DEF={target:'auto',custom:180,lead:30,brk:15,lunch:30,plead:120,sound:true,tone:'beep',vib:true};
+const DEF={target:'auto',custom:180,lead:30,holdMax:180,hlead:30,brk:15,lunch:30,plead:120,sound:true,tone:'beep',vib:true};
 const load=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}};
 let S=Object.assign({},DEF,load('acw.settings',{}));
 let A=load('acw.active',null);           // active timer
 let L=load('acw.log',{});                // {YYYY-MM-DD:[[sec,target],...]}
+let HL=load('acw.holds',{});             // {YYYY-MM-DD:[[sec,max],...]}
+let holdN=load('acw.holdN',0);           // holds on the current call
+const saveH=()=>{localStorage.setItem('acw.holds',JSON.stringify(HL));localStorage.setItem('acw.holdN',JSON.stringify(holdN))};
 const saveS=()=>localStorage.setItem('acw.settings',JSON.stringify(S));
 const saveA=()=>A?localStorage.setItem('acw.active',JSON.stringify(A)):localStorage.removeItem('acw.active');
 const saveL=()=>localStorage.setItem('acw.log',JSON.stringify(L));
@@ -215,9 +227,11 @@ async function wake(on){
 // ---------- timer ----------
 function start(mode){
   unlock();
-  const dur=mode==='acw'?target():(mode==='brk'?S.brk:S.lunch)*60;
-  let lead=mode==='acw'?+S.lead:+S.plead;if(lead>=dur)lead=Math.floor(dur/2);
-  A={mode,start:Date.now(),dur,lead,warned:false,ended:false,last:0};
+  const dur=mode==='acw'?target():mode==='hold'?+S.holdMax:(mode==='brk'?S.brk:S.lunch)*60;
+  let lead=mode==='acw'?+S.lead:mode==='hold'?+S.hlead:+S.plead;if(lead>=dur)lead=Math.floor(dur/2);
+  if(mode==='hold'){holdN++;saveH()}
+  if(mode==='acw'){holdN=0;saveH()}
+  A={mode,start:Date.now(),dur,lead,warned:false,ended:false,last:0,n:mode==='hold'?holdN:0};
   saveA();wake(true);tick();render();
 }
 function stop(log){
@@ -228,6 +242,12 @@ function stop(log){
     const keys=Object.keys(L).sort();while(keys.length>21)delete L[keys.shift()];
     saveL();
     toast(sec<=A.dur?`Logged ${fmt(sec)}. On time.`:`Logged ${fmt(sec)}. ${fmt(sec-A.dur)} over.`);
+  }else if(A.mode==='hold'&&log){
+    const sec=Math.round((Date.now()-A.start)/1000);
+    const k=dkey();(HL[k]=HL[k]||[]).push([sec,A.dur]);
+    const keys=Object.keys(HL).sort();while(keys.length>21)delete HL[keys.shift()];
+    saveH();
+    toast(sec<=A.dur?`Hold ${fmt(sec)}. Checked back in time.`:`Hold ${fmt(sec)}. ${fmt(sec-A.dur)} past max.`);
   }else if(A.mode!=='acw'&&log){toast('Welcome back.')}
   A=null;saveA();wake(false);render();
 }
@@ -238,8 +258,8 @@ function tick(){
   if(!A.ended&&left<=0){A.ended=true;A.warned=true;A.last=now;saveA();alarm('end')}
   if(A.ended){
     const over=-left;
-    if(over<=60&&now-A.last>=10000){A.last=now;saveA();alarm('nag')}
-    if(over>=(A.mode==='acw'?600:1800)){const m=A.mode;A=null;saveA();wake(false);render();toast(m==='acw'?'Timer ran 10+ minutes over, so it stopped without logging.':'Timer stopped.');return}
+    if(over<=(A.mode==='hold'?180:60)&&now-A.last>=10000){A.last=now;saveA();alarm('nag')}
+    if(over>=(A.mode==='acw'||A.mode==='hold'?600:1800)){const m=A.mode;A=null;saveA();wake(false);render();toast(m==='acw'||m==='hold'?'Timer ran 10+ minutes over, so it stopped without logging.':'Timer stopped.');return}
   }
   draw(left);
 }
@@ -251,9 +271,10 @@ function draw(left){
   b.classList.toggle('warn',state==='warn');b.classList.toggle('over',state==='over');
   t.textContent=left<=0?'+'+fmt(-left):fmt(Math.ceil(left));
   $('fill').style.width=Math.min(100,100*(A.dur-left)/A.dur)+'%';
-  const lbl=A.mode==='acw'?'Wrap-up':A.mode==='brk'?'Break':'Lunch';
-  $('mode').textContent=state==='over'?lbl+' · over':state==='warn'?lbl+(A.mode==='acw'?' · wrap it up':' · head back'):lbl;
-  $('sub').textContent=state==='over'?(A.mode==='acw'?'Get back to Available':'Time to be back'):`Limit ${fmt(A.dur)} · alarm at ${fmt(A.dur-A.lead)}`;
+  const lbl=A.mode==='acw'?'Wrap-up':A.mode==='hold'?('On hold'+(A.n>1?' #'+A.n:'')):A.mode==='brk'?'Break':'Lunch';
+  const warnTxt={acw:' · wrap it up',hold:' · check back soon'}[A.mode]||' · head back';
+  $('mode').textContent=state==='over'?(A.mode==='hold'?lbl+' · check on caller now':lbl+' · over'):state==='warn'?lbl+warnTxt:lbl;
+  $('sub').textContent=state==='over'?({acw:'Get back to Available',hold:'Pick up the caller and give an update'}[A.mode]||'Time to be back'):`${A.mode==='hold'?'Max hold':'Limit'} ${fmt(A.dur)} · alarm at ${fmt(A.dur-A.lead)}`;
 }
 function render(){
   const main=$('main'),row=$('row'),b=document.body;
@@ -264,8 +285,16 @@ function render(){
     $('bar').className='bar';$('fill').style.width='0';
     $('sub').textContent=`Limit ${fmt(tg)} · alarm at ${fmt(tg-Math.min(+S.lead,tg/2))}`;
     main.className='main';main.innerHTML='CALL ENDED<small>Start wrap-up timer</small>';
+    $('hold').hidden=false;$('hold').innerHTML=holdN?`HOLD AGAIN<small>Hold #${holdN+1} on this call · ${fmt(S.holdMax)} max</small>`:`HOLD<small>Caller on hold · ${fmt(S.holdMax)} max</small>`;
     row.innerHTML=`<button class="sec" data-a="brk">Break<span>${S.brk} min</span></button><button class="sec" data-a="lunch">Lunch<span>${S.lunch} min</span></button>`;
+  }else if(A.mode==='hold'){
+    $('hold').hidden=true;
+    main.className='main';
+    main.innerHTML='BACK WITH CALLER<small>Stop the hold timer</small>';
+    row.innerHTML=`<button class="sec" data-a="endhold">Call ended<span>Start wrap-up</span></button><button class="sec ghost" data-a="cancel">Cancel</button>`;
+    tick();
   }else{
+    $('hold').hidden=true;
     main.className='main av';
     main.innerHTML=A.mode==='acw'?'AVAILABLE<small>I\'m back on Available</small>':'I\'M BACK<small>Back from '+(A.mode==='brk'?'break':'lunch')+'</small>';
     row.innerHTML=`<button class="sec ghost" data-a="cancel">${A.mode==='acw'?'Cancel (don\'t log)':'Cancel'}</button>`;
@@ -285,20 +314,23 @@ function stats(){
   $('recent').innerHTML=today.slice(-12).reverse().map(x=>`<em class="${x[0]>x[1]?'o':''}">${fmt(x[0])}</em>`).join('');
   let wn=0,ws=0,won=0;
   for(let i=0;i<7;i++){const d=new Date();d.setDate(d.getDate()-i);(L[dkey(d)]||[]).forEach(x=>{wn++;ws+=x[0];if(x[0]<=x[1])won++})}
+  const ht=HL[dkey()]||[];
+  $('holds').textContent=ht.length?`Holds today: ${ht.length} · avg ${fmt(ht.reduce((a,x)=>a+x[0],0)/ht.length)} · ${ht.filter(x=>x[0]>x[1]).length} past max`:'';
   $('week').textContent=wn?`Last 7 days: ${wn} wrap-ups · avg ${fmt(ws/wn)} · ${Math.round(100*won/wn)}% on time`:'';
 }
 let tt;function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),2600)}
 
 // ---------- events ----------
 $('main').addEventListener('click',()=>{unlock();A?stop(true):start('acw')});
-$('row').addEventListener('click',e=>{const a=e.target.closest('button')?.dataset.a;if(!a)return;unlock();if(a==='cancel'){stop(false);toast('Canceled. Not logged.')}else start(a)});
+$('hold').addEventListener('click',()=>{unlock();if(!A)start('hold')});
+$('row').addEventListener('click',e=>{const a=e.target.closest('button')?.dataset.a;if(!a)return;unlock();if(a==='cancel'){if(A&&A.mode==='hold'){holdN=Math.max(0,holdN-1);saveH()}stop(false);toast('Canceled. Not logged.')}else if(a==='endhold'){stop(true);start('acw')}else start(a)});
 $('mute').addEventListener('click',()=>{S.sound=!S.sound;saveS();if(S.sound)unlock();render();toast(S.sound?'Alarm sound on':'Alarm muted. The screen will still flash.')});
 document.addEventListener('keydown',e=>{if(e.code==='Space'&&!$('dlg').open){e.preventDefault();$('main').click()}});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){if(A){wake(true);unlock()}tick()}});
 setInterval(tick,200);
 
 // settings
-const F=['target','custom','lead','brk','lunch','plead','tone'];
+const F=['target','custom','lead','holdMax','hlead','brk','lunch','plead','tone'];
 function fillForm(){
   F.forEach(k=>$(k).value=S[k]);$('sound').checked=S.sound;$('vib').checked=S.vib;
   $('customRow').hidden=S.target!=='custom';
@@ -311,7 +343,7 @@ $('form').addEventListener('change',()=>{
   $('customRow').hidden=S.target!=='custom';if(!A)render();else{$('mute').classList.toggle('muted',!S.sound)}
 });
 $('test').addEventListener('click',()=>{unlock();const was=S.sound;S.sound=true;alarm('test');S.sound=was;if(!was)toast('Your alarm is muted. This is how it sounds when it\'s on.')});
-$('clear').addEventListener('click',()=>{if(confirm('Clear today\'s wrap-up times?')){delete L[dkey()];saveL();stats();toast('Today cleared.')}});
+$('clear').addEventListener('click',()=>{if(confirm('Clear today\'s wrap-up and hold times?')){delete L[dkey()];delete HL[dkey()];saveL();saveH();stats();toast('Today cleared.')}});
 $('dlg').addEventListener('close',render);
 
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
