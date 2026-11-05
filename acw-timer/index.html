@@ -117,6 +117,7 @@ input[type=number]{width:90px;min-width:0}
       <div><b id="sOn">–</b><span>on time</span></div>
     </div>
     <div class="recent" id="recent"></div>
+    <div class="week" id="breaks"></div>
     <div class="week" id="holds"></div>
     <div class="week" id="week"></div>
   </section>
@@ -127,6 +128,7 @@ input[type=number]{width:90px;min-width:0}
       <li>The second you hang up, tap <b>CALL ENDED</b>.</li>
       <li>The alarm goes off before your limit (30 seconds by default). That's your cue to wrap up your notes.</li>
       <li>Tap <b>AVAILABLE</b> when you go back to Available. Your time gets logged.</li>
+      <li>Tap <b>I'M BACK</b> when you're back from break or lunch. Today's card adds up your total break and lunch time.</li>
       <li>Putting a caller on hold? Tap purple <b>HOLD</b>. The alarm goes off before the 3:00 max. Tap <b>BACK WITH CALLER</b> when you pick up. If the call ends while they're on hold, tap <b>Call ended</b> and your wrap-up timer starts.</li>
       <li>Keep this screen open while you work. It stays awake while a timer runs.</li>
     </ol>
@@ -157,7 +159,8 @@ input[type=number]{width:90px;min-width:0}
     <div class="f"><label for="lunch">Lunch length</label><select id="lunch"><option value="30">30 min</option><option value="45">45 min</option><option value="60">60 min</option></select></div>
     <div class="f"><label for="plead">Break/lunch heads-up</label><select id="plead"><option value="60">1 min before</option><option value="120">2 min before</option><option value="180">3 min before</option><option value="300">5 min before</option></select></div>
     <div class="f"><label for="sound">Alarm sound</label><label class="sw"><input type="checkbox" id="sound"><b></b></label></div>
-    <div class="f"><label for="tone">Sound</label><select id="tone"><option value="beep">Beep</option><option value="chime">Chime</option><option value="buzzer">Buzzer</option></select></div>
+    <div class="f"><label for="tone">Sound</label><select id="tone"><option value="beep">Beep</option><option value="chime">Chime</option><option value="buzzer">Buzzer</option><option value="alarm">Alarm clock (loud)</option><option value="siren">Siren (loud)</option><option value="klaxon">Klaxon (loudest)</option></select></div>
+    <div class="f"><label for="until">Keep ringing until I tap<small>After the limit, the alarm repeats every few seconds until you tap Available, Back with caller or I'm back</small></label><label class="sw"><input type="checkbox" id="until"><b></b></label></div>
     <div class="f"><label for="vib">Vibrate<small>Android only. iPhones don't allow it.</small></label><label class="sw"><input type="checkbox" id="vib"><b></b></label></div>
     <div class="dbtns"><button type="button" id="test">Test alarm</button><button type="button" id="clear">Clear today</button></div>
     <div class="dbtns"><button class="done" value="ok">Done</button></div>
@@ -169,12 +172,14 @@ input[type=number]{width:90px;min-width:0}
 <script>
 (()=>{
 const $=s=>document.getElementById(s);
-const DEF={target:'auto',custom:180,lead:30,holdMax:180,hlead:30,brk:15,lunch:30,plead:120,sound:true,tone:'beep',vib:true};
+const DEF={target:'auto',custom:180,lead:30,holdMax:180,hlead:30,brk:15,lunch:30,plead:120,sound:true,tone:'beep',vib:true,until:false};
 const load=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}};
 let S=Object.assign({},DEF,load('acw.settings',{}));
 let A=load('acw.active',null);           // active timer
 let L=load('acw.log',{});                // {YYYY-MM-DD:[[sec,target],...]}
 let HL=load('acw.holds',{});             // {YYYY-MM-DD:[[sec,max],...]}
+let BL=load('acw.breaks',{});            // {YYYY-MM-DD:[[mode,sec,dur],...]}
+const saveB=()=>localStorage.setItem('acw.breaks',JSON.stringify(BL));
 let holdN=load('acw.holdN',0);           // holds on the current call
 const saveH=()=>{localStorage.setItem('acw.holds',JSON.stringify(HL));localStorage.setItem('acw.holdN',JSON.stringify(holdN))};
 const saveS=()=>localStorage.setItem('acw.settings',JSON.stringify(S));
@@ -183,6 +188,7 @@ const saveL=()=>localStorage.setItem('acw.log',JSON.stringify(L));
 
 const pad=n=>String(n).padStart(2,'0');
 const dkey=(d=new Date())=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const fmtL=s=>{s=Math.max(0,Math.round(s));const hh=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return hh?`${hh}:${pad(m)}:${pad(x)}`:`${m}:${pad(x)}`};
 const fmt=s=>{s=Math.max(0,Math.round(s));return Math.floor(s/60)+':'+pad(s%60)};
 const autoTarget=(d=new Date())=>{const y=d.getFullYear(),m=d.getMonth();if(y<2027)return 180;if(y===2027&&m<3)return 165;return 150};
 const target=()=>S.target==='auto'?autoTarget():S.target==='custom'?Math.max(30,+S.custom||180):+S.target;
@@ -197,21 +203,35 @@ function unlock(){
   if(ctx.state!=='running')ctx.resume();
   const b=ctx.createBuffer(1,1,22050),s=ctx.createBufferSource();s.buffer=b;s.connect(ctx.destination);s.start(0);
 }
-const TONES={beep:{f:[880],type:'square',len:.14,vol:.32},chime:{f:[660,880,1320],type:'sine',len:.35,vol:.7},buzzer:{f:[196],type:'sawtooth',len:.28,vol:.32}};
+const TONES={beep:{f:[880],type:'square',len:.14,vol:.32},chime:{f:[660,880,1320],type:'sine',len:.35,vol:.7},buzzer:{f:[196],type:'sawtooth',len:.28,vol:.32},
+  alarm:{f:[1400,2000,1400,2000],type:'square',len:.09,vol:.45,step:.1},
+  siren:{sweep:[600,1600],type:'sawtooth',len:.55,vol:.4},
+  klaxon:{f:[330,330],type:'sawtooth',len:.32,vol:.55,step:.36,dual:415}};
 function note(f,t0,len,type,vol){
   const o=ctx.createOscillator(),g=ctx.createGain();o.type=type;o.frequency.value=f;
   g.gain.setValueAtTime(.0001,t0);g.gain.exponentialRampToValueAtTime(vol,t0+.012);g.gain.exponentialRampToValueAtTime(.0001,t0+len);
   o.connect(g);g.connect(ctx.destination);o.start(t0);o.stop(t0+len+.05);
 }
-function playSound(reps){
-  if(!ctx)return;if(ctx.state!=='running')ctx.resume();
-  const T=TONES[S.tone]||TONES.beep,gap=T.f.length*.12+T.len+.12;let t=ctx.currentTime+.03;
-  for(let i=0;i<reps;i++){T.f.forEach((f,j)=>note(f,t+i*gap+j*.12,T.len,T.type,T.vol))}
+function sweep(f0,f1,t0,len,type,vol){
+  const o=ctx.createOscillator(),g=ctx.createGain();o.type=type;
+  o.frequency.setValueAtTime(f0,t0);o.frequency.linearRampToValueAtTime(f1,t0+len/2);o.frequency.linearRampToValueAtTime(f0,t0+len);
+  g.gain.setValueAtTime(.0001,t0);g.gain.exponentialRampToValueAtTime(vol,t0+.02);g.gain.setValueAtTime(vol,t0+len-.03);g.gain.exponentialRampToValueAtTime(.0001,t0+len);
+  o.connect(g);g.connect(ctx.destination);o.start(t0);o.stop(t0+len+.05);
 }
-function alarm(kind){ // warn | end | nag | test
-  const reps={warn:3,end:8,nag:2,test:3}[kind];
+function playSound(reps){
+  if(!ctx)return 0;if(ctx.state!=='running')ctx.resume();
+  const T=TONES[S.tone]||TONES.beep,st=T.step||.12;let t=ctx.currentTime+.03;
+  const gap=T.sweep?T.len+.05:T.f.length*st+T.len+.12;
+  for(let i=0;i<reps;i++){
+    if(T.sweep){sweep(T.sweep[0],T.sweep[1],t+i*gap,T.len,T.type,T.vol);continue}
+    T.f.forEach((f,j)=>{note(f,t+i*gap+j*st,T.len,T.type,T.vol);if(T.dual)note(T.dual,t+i*gap+j*st,T.len,T.type,T.vol*.8)});
+  }
+  return reps*gap;
+}
+function alarm(kind){ // warn | end | nag | test | loop
+  const reps={warn:3,end:8,nag:2,test:3,loop:2}[kind];
   if(S.sound)playSound(reps);
-  if(S.vib&&navigator.vibrate)navigator.vibrate(kind==='end'?[400,150,400,150,400]:[200,100,200]);
+  if(S.vib&&navigator.vibrate)navigator.vibrate(kind==='end'||kind==='loop'?[400,150,400,150,400]:[200,100,200]);
   document.body.classList.remove('flash');void document.body.offsetWidth;document.body.classList.add('flash');
 }
 
@@ -248,6 +268,13 @@ function stop(log){
     const keys=Object.keys(HL).sort();while(keys.length>21)delete HL[keys.shift()];
     saveH();
     toast(sec<=A.dur?`Hold ${fmt(sec)}. Checked back in time.`:`Hold ${fmt(sec)}. ${fmt(sec-A.dur)} past max.`);
+  }else if((A.mode==='brk'||A.mode==='lunch')&&log){
+    const sec=Math.round((Date.now()-A.start)/1000);
+    const k=dkey();(BL[k]=BL[k]||[]).push([A.mode,sec,A.dur]);
+    const keys=Object.keys(BL).sort();while(keys.length>21)delete BL[keys.shift()];
+    saveB();
+    const tot=(BL[k]||[]).filter(x=>x[0]===A.mode).reduce((a,x)=>a+x[1],0);
+    toast(`${A.mode==='brk'?'Break':'Lunch'} ${fmtL(sec)}${sec>A.dur?` (${fmtL(sec-A.dur)} over)`:''}. ${A.mode==='brk'?'Breaks':'Lunch'} today: ${fmtL(tot)}.`);
   }else if(A.mode!=='acw'&&log){toast('Welcome back.')}
   A=null;saveA();wake(false);render();
 }
@@ -258,10 +285,13 @@ function tick(){
   if(!A.ended&&left<=0){A.ended=true;A.warned=true;A.last=now;saveA();alarm('end')}
   if(A.ended){
     const over=-left;
-    if(over<=(A.mode==='hold'?180:60)&&now-A.last>=10000){A.last=now;saveA();alarm('nag')}
-    if(over>=(A.mode==='acw'||A.mode==='hold'?600:1800)){const m=A.mode;A=null;saveA();wake(false);render();toast(m==='acw'||m==='hold'?'Timer ran 10+ minutes over, so it stopped without logging.':'Timer stopped.');return}
+    if(S.until){
+      if(now-A.last>=2500){A.last=now;saveA();alarm('loop')}
+    }else if(over<=(A.mode==='hold'?180:60)&&now-A.last>=10000){A.last=now;saveA();alarm('nag')}
+    if(!S.until&&over>=(A.mode==='acw'||A.mode==='hold'?600:1800)){const m=A.mode;A=null;saveA();wake(false);render();toast(m==='acw'||m==='hold'?'Timer ran 10+ minutes over, so it stopped without logging.':'Timer stopped.');return}
   }
   draw(left);
+  if((A.mode==='brk'||A.mode==='lunch')&&now-(window.__lastS||0)>1000){window.__lastS=now;stats()}
 }
 function draw(left){
   const t=$('time'),bar=$('bar'),b=document.body;
@@ -314,6 +344,15 @@ function stats(){
   $('recent').innerHTML=today.slice(-12).reverse().map(x=>`<em class="${x[0]>x[1]?'o':''}">${fmt(x[0])}</em>`).join('');
   let wn=0,ws=0,won=0;
   for(let i=0;i<7;i++){const d=new Date();d.setDate(d.getDate()-i);(L[dkey(d)]||[]).forEach(x=>{wn++;ws+=x[0];if(x[0]<=x[1])won++})}
+  const bt=BL[dkey()]||[];
+  const sum=(m)=>{const a=bt.filter(x=>x[0]===m);return [a.length,a.reduce((s,x)=>s+x[1],0),a.reduce((s,x)=>s+Math.max(0,x[1]-x[2]),0)]};
+  const [bn,bs,bo]=sum('brk'),[ln,ls,lo]=sum('lunch');
+  const live=A&&(A.mode==='brk'||A.mode==='lunch')?Math.round((Date.now()-A.start)/1000):0;
+  const parts=[];
+  if(bn||(A&&A.mode==='brk'))parts.push(`Breaks: ${bn+(A&&A.mode==='brk'?1:0)} · ${fmtL(bs+(A&&A.mode==='brk'?live:0))} used${bo?` · ${fmtL(bo)} over`:''}`);
+  if(ln||(A&&A.mode==='lunch'))parts.push(`Lunch: ${fmtL(ls+(A&&A.mode==='lunch'?live:0))} used${lo?` · ${fmtL(lo)} over`:''}`);
+  if(parts.length)parts.push(`Total off phones: ${fmtL(bs+ls+live)}`);
+  $('breaks').innerHTML=parts.join('<br>');
   const ht=HL[dkey()]||[];
   $('holds').textContent=ht.length?`Holds today: ${ht.length} · avg ${fmt(ht.reduce((a,x)=>a+x[0],0)/ht.length)} · ${ht.filter(x=>x[0]>x[1]).length} past max`:'';
   $('week').textContent=wn?`Last 7 days: ${wn} wrap-ups · avg ${fmt(ws/wn)} · ${Math.round(100*won/wn)}% on time`:'';
@@ -332,18 +371,19 @@ setInterval(tick,200);
 // settings
 const F=['target','custom','lead','holdMax','hlead','brk','lunch','plead','tone'];
 function fillForm(){
-  F.forEach(k=>$(k).value=S[k]);$('sound').checked=S.sound;$('vib').checked=S.vib;
+  F.forEach(k=>$(k).value=S[k]);$('sound').checked=S.sound;$('vib').checked=S.vib;$('until').checked=S.until;
   $('customRow').hidden=S.target!=='custom';
   $('autoNote').textContent='Auto today: '+fmt(autoTarget());
 }
 $('gear').addEventListener('click',()=>{unlock();fillForm();$('dlg').showModal()});
 $('form').addEventListener('change',()=>{
   F.forEach(k=>{S[k]=['target','tone'].includes(k)?$(k).value:+$(k).value});
-  S.sound=$('sound').checked;S.vib=$('vib').checked;saveS();
+  S.sound=$('sound').checked;S.vib=$('vib').checked;S.until=$('until').checked;saveS();
   $('customRow').hidden=S.target!=='custom';if(!A)render();else{$('mute').classList.toggle('muted',!S.sound)}
 });
+$('tone').addEventListener('change',()=>{unlock();S.tone=$('tone').value;const was=S.sound;S.sound=true;playSound(2);S.sound=was});
 $('test').addEventListener('click',()=>{unlock();const was=S.sound;S.sound=true;alarm('test');S.sound=was;if(!was)toast('Your alarm is muted. This is how it sounds when it\'s on.')});
-$('clear').addEventListener('click',()=>{if(confirm('Clear today\'s wrap-up and hold times?')){delete L[dkey()];delete HL[dkey()];saveL();saveH();stats();toast('Today cleared.')}});
+$('clear').addEventListener('click',()=>{if(confirm('Clear today\'s wrap-up, hold and break times?')){delete L[dkey()];delete HL[dkey()];delete BL[dkey()];saveL();saveH();saveB();stats();toast('Today cleared.')}});
 $('dlg').addEventListener('close',render);
 
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
