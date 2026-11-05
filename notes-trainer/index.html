@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Call Notes Trainer</title>
+<style>
+:root{--bg:#0f1720;--card:#18222e;--line:#263342;--txt:#e8eef4;--dim:#8a9aab;--go:#22c55e;--av:#3b82f6;--warn:#f59e0b;--bad:#ef4444}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--txt);font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:20px 20px 60px}
+h1{font-size:26px;margin:0 0 4px}
+h2{font-size:15px;text-transform:uppercase;letter-spacing:1.2px;color:var(--dim);margin:28px 0 10px}
+p{margin:6px 0}
+.dim{color:var(--dim)}
+a{color:#93c5fd}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.btn{background:var(--av);color:#fff;border:0;border-radius:10px;padding:11px 18px;font-size:16px;font-weight:700;cursor:pointer}
+.btn.green{background:var(--go);color:#062b14}
+.btn.ghost{background:var(--card);color:var(--txt);border:1px solid var(--line);font-weight:600}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-top:12px}
+.levels{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.lvl{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:6px}
+.lvl.locked{opacity:.5}
+.lvl b{font-size:18px}
+.lvl .n{font-size:12px;letter-spacing:1.2px;text-transform:uppercase;color:var(--dim);font-weight:700}
+.lvl .pr{font-size:13px;color:var(--dim)}
+.lvl .btn{margin-top:auto}
+.pill{display:inline-block;font-size:12px;padding:2px 8px;border-radius:20px;background:#123222;color:#86efac;font-weight:700}
+.pill.no{background:#3a1212;color:#fca5a5}
+.pill.mid{background:#3a2a06;color:#fcd34d}
+.call{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px}
+@media(max-width:760px){.call{grid-template-columns:1fr}}
+.stage{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;min-height:300px;display:flex;flex-direction:column;gap:12px}
+.who{font-size:13px;text-transform:uppercase;letter-spacing:1.3px;font-weight:800}
+.who.c{color:#93c5fd}.who.a{color:#86efac}.who.e{color:var(--warn)}
+.say{font-size:22px;line-height:1.4;font-weight:600}
+.cap{font-size:16px;color:var(--dim);font-style:italic}
+.wave{display:flex;gap:4px;height:28px;align-items:center}
+.wave i{width:6px;background:#93c5fd;border-radius:3px;animation:w 1s infinite ease-in-out}
+.wave i:nth-child(2){animation-delay:.15s}.wave i:nth-child(3){animation-delay:.3s}.wave i:nth-child(4){animation-delay:.45s}.wave i:nth-child(5){animation-delay:.6s}
+@keyframes w{0%,100%{height:6px}50%{height:26px}}
+.meter{height:10px;background:var(--line);border-radius:6px;overflow:hidden}
+.meter i{display:block;height:100%;width:0;background:var(--go);transition:width .08s}
+.prog{height:6px;background:var(--line);border-radius:6px;overflow:hidden}
+.prog i{display:block;height:100%;width:0;background:var(--av)}
+textarea{width:100%;min-height:330px;background:#0b1118;color:var(--txt);border:1px solid var(--line);border-radius:14px;padding:14px;font:16px/1.6 ui-monospace,Menlo,Consolas,monospace;resize:vertical}
+textarea:focus{outline:2px solid var(--av)}
+.bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}
+.big{font-size:40px;font-weight:800;font-variant-numeric:tabular-nums}
+.res{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.res div{background:#0b1118;border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center}
+.res b{display:block;font-size:26px;font-variant-numeric:tabular-nums}
+.res span{font-size:13px;color:var(--dim)}
+ul.facts{list-style:none;padding:0;margin:8px 0}
+ul.facts li{padding:6px 0;border-bottom:1px solid var(--line)}
+ul.facts li:before{content:"✓ ";color:var(--go);font-weight:800}
+ul.facts li.miss:before{content:"✗ ";color:var(--bad)}
+ul.facts li.miss{color:#fca5a5}
+.verdict{font-size:22px;font-weight:800;margin:4px 0 8px}
+.verdict.ok{color:var(--go)}.verdict.no{color:var(--warn)}
+details{margin-top:12px}
+summary{cursor:pointer;font-weight:600}
+.tx p{margin:4px 0}.tx .a{color:#86efac}.tx .c{color:#93c5fd}
+.passage{background:#0b1118;border:1px solid var(--line);border-radius:12px;padding:14px;font:18px/1.7 ui-monospace,Menlo,Consolas,monospace;user-select:none}
+.passage .ok{color:var(--go)}.passage .bad{color:#fff;background:var(--bad)}.passage .cur{border-bottom:2px solid var(--av)}
+.passage .todo{color:var(--dim)}
+input[type=text].ti{width:100%;margin-top:10px;background:#0b1118;color:var(--txt);border:1px solid var(--line);border-radius:10px;padding:12px;font:18px ui-monospace,Menlo,Consolas,monospace}
+.set{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+select{background:#0b1118;color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:8px;font-size:15px;max-width:60%}
+.tips li{margin:4px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- HOME -->
+<section id="home">
+  <div class="top">
+    <div>
+      <h1>Call Notes Trainer</h1>
+      <p class="dim">Practice taking notes while the caller talks, then while <i>you</i> talk. Use headphones. Each mock call takes about 2 minutes.</p>
+    </div>
+    <a href="../" class="dim" style="white-space:nowrap">All tools</a>
+  </div>
+
+  <h2>Step 1 · Typing check</h2>
+  <div class="card">
+    <p>A 60-second typing test. If you're under 35 words a minute, or you look at the keys, start with typing practice. This skill builds on that.</p>
+    <div class="bar"><button class="btn ghost" id="goType">Take the typing check</button><span id="typeBest" class="dim"></span></div>
+  </div>
+
+  <h2>Step 2 · Mock calls</h2>
+  <div class="levels" id="levels"></div>
+  <p class="dim" style="margin-top:10px">Pass 2 different calls on a level to unlock the next one. A pass means you captured at least 80% of the key facts with no more than 1 repeat.</p>
+
+  <h2>How to take notes on a call</h2>
+  <div class="card"><ul class="tips">
+    <li><b>Write the caller's words first.</b> Get the problem down while they're explaining it, before you start explaining the fix.</li>
+    <li><b>Short words beat full sentences.</b> "Pwd chg Fri from phone, locked" is a fine note.</li>
+    <li><b>Fill the template in order:</b> Issue → Tried → Resolution → Next step. Your hands learn where things go.</li>
+    <li><b>Use the dead air.</b> Holds, "let me look that up," and the caller logging in are free typing time.</li>
+    <li><b>When you're talking, type what they <i>already</i> said.</b> Don't try to type what you're saying.</li>
+  </ul></div>
+
+  <h2>Settings</h2>
+  <div class="card">
+    <div class="set"><span>Caller voice</span><select id="voice"></select></div>
+    <div class="set"><span>Show captions while the caller talks <span class="dim">(easier, but captioned calls don't count toward unlocking)</span></span><input type="checkbox" id="caps"></div>
+    <div class="set"><span>Unlock all levels <span class="dim">(team lead demo)</span></span><input type="checkbox" id="unlockAll"></div>
+    <div class="set"><span>Progress is saved in this browser only.</span><button class="btn ghost" id="reset">Reset progress</button></div>
+  </div>
+  <p class="dim" style="margin-top:18px;font-size:13px">All callers, names and numbers are made up. Nothing you type leaves this browser. The microphone check measures volume only and never records.</p>
+</section>
+
+<!-- TYPING TEST -->
+<section id="typing" hidden>
+  <div class="top"><h1>Typing check</h1><button class="btn ghost" id="typeBack">Back</button></div>
+  <p class="dim">Type the text below. The timer starts on your first key. Don't look at your hands.</p>
+  <div class="big" id="tClock">1:00</div>
+  <div class="passage" id="passage"></div>
+  <input type="text" class="ti" id="tIn" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Start typing here">
+  <div id="tRes" class="card" hidden></div>
+</section>
+
+<!-- CALL -->
+<section id="call" hidden>
+  <div class="top">
+    <div><h1 id="cTitle">Incoming call</h1><p class="dim" id="cLevel"></p></div>
+    <button class="btn ghost" id="quit">Quit call</button>
+  </div>
+  <div class="call">
+    <div class="stage">
+      <div class="who" id="who">Connecting…</div>
+      <div class="wave" id="wave" hidden><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="say" id="say"></div>
+      <div class="cap" id="cap"></div>
+      <div id="micBox" hidden>
+        <div class="dim" style="font-size:13px;margin-bottom:4px">Your voice</div>
+        <div class="meter"><i id="micM"></i></div>
+      </div>
+      <div class="prog" id="progBox" hidden><i id="prog"></i></div>
+      <div class="big" id="lock" hidden></div>
+      <div class="bar" style="margin-top:auto">
+        <button class="btn ghost" id="repeat" disabled>Ask caller to repeat</button>
+        <span class="dim" id="repNote"></span>
+      </div>
+    </div>
+    <div>
+      <textarea id="notes" spellcheck="true"></textarea>
+      <div class="bar"><button class="btn green" id="done" hidden>Notes done</button><span class="dim" id="doneNote"></span></div>
+    </div>
+  </div>
+</section>
+
+<!-- RESULTS -->
+<section id="results" hidden>
+  <div class="top"><h1>Call results</h1><a href="../" class="dim">All tools</a></div>
+  <div class="verdict" id="verdict"></div>
+  <p class="dim" id="why"></p>
+  <div class="res" id="resGrid"></div>
+  <div class="card"><b>Key facts</b><ul class="facts" id="factList"></ul></div>
+  <details class="card"><summary>What you wrote</summary><pre id="yourNotes" style="white-space:pre-wrap;font-family:ui-monospace,Menlo,Consolas,monospace"></pre></details>
+  <details class="card"><summary>What was said on the call</summary><div class="tx" id="tx"></div></details>
+  <div class="bar"><button class="btn" id="next">Next call</button><button class="btn ghost" id="retry">Retry this call</button><button class="btn ghost" id="toHome">Back to levels</button><button class="btn ghost" id="copy">Copy results</button></div>
+</section>
+
+</div>
+<script src="scenarios.js"></script>
+<script>
+(()=>{
+const $=id=>document.getElementById(id);
+const LEVELS={
+ 1:{name:'Listen and type',desc:'The caller explains the problem. You type notes as they talk.',rate:.95,curve:false,speak:false,lock:0},
+ 2:{name:'Keep up',desc:'The caller talks faster and adds details as they go, just like real callers.',rate:1.1,curve:true,speak:false,lock:0},
+ 3:{name:'Talk and type',desc:'You read your lines out loud while you finish notes on what the caller already said.',rate:1.0,curve:true,speak:true,lock:0},
+ 4:{name:'Beat the clock',desc:'Level 3, plus your notes lock 30 seconds after the call ends, just like ACW.',rate:1.1,curve:true,speak:true,lock:30}
+};
+const TEMPLATE="Issue: \nTried: \nResolution: \nNext step: ";
+const load=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}};
+let P=load('cnt.progress',{passed:{1:[],2:[],3:[],4:[]},best:{},typing:null,history:[]});
+let S=load('cnt.settings',{voice:'',caps:false,unlockAll:false});
+const saveP=()=>localStorage.setItem('cnt.progress',JSON.stringify(P));
+const saveS=()=>localStorage.setItem('cnt.settings',JSON.stringify(S));
+const show=id=>{['home','typing','call','results'].forEach(s=>$(s).hidden=s!==id);window.scrollTo(0,0)};
+const fmt=s=>{s=Math.max(0,Math.round(s));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const esc=s=>s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+
+// ---------- home ----------
+const unlocked=l=>S.unlockAll||l===1||(P.passed[l-1]||[]).length>=2;
+function home(){
+  const g=$('levels');g.innerHTML='';
+  for(const l of [1,2,3,4]){
+    const L=LEVELS[l],u=unlocked(l),n=(P.passed[l]||[]).length;
+    const d=document.createElement('div');d.className='lvl'+(u?'':' locked');
+    d.innerHTML=`<span class="n">Level ${l}</span><b>${L.name}</b><span>${L.desc}</span>
+      <span class="pr">${n?`Passed ${n} of ${SCENARIOS.length} calls`:'Not passed yet'}${l<4?(n>=2?' · next level unlocked':` · pass ${2-Math.min(n,2)} more to unlock Level ${l+1}`):''}</span>
+      <button class="btn" ${u?'':'disabled'} data-l="${l}">${u?'Start a call':'Locked'}</button>`;
+    g.appendChild(d);
+  }
+  $('typeBest').textContent=P.typing?`Your best: ${P.typing.wpm} wpm, ${P.typing.acc}% accuracy`:'';
+  $('caps').checked=S.caps;$('unlockAll').checked=S.unlockAll;
+  show('home');
+}
+$('levels').addEventListener('click',e=>{const l=+e.target.dataset.l;if(l)startCall(l)});
+$('caps').onchange=e=>{S.caps=e.target.checked;saveS()};
+$('unlockAll').onchange=e=>{S.unlockAll=e.target.checked;saveS();home()};
+$('reset').onclick=()=>{if(confirm('Reset all your progress?')){P={passed:{1:[],2:[],3:[],4:[]},best:{},typing:null,history:[]};saveP();home()}};
+
+// ---------- voice ----------
+const synth=window.speechSynthesis;
+let voices=[];
+function loadVoices(){
+  if(!synth)return;
+  voices=synth.getVoices().filter(v=>/^en/i.test(v.lang));
+  const sel=$('voice');sel.innerHTML=voices.map(v=>`<option value="${esc(v.name)}">${esc(v.name)}</option>`).join('')||'<option>Default voice</option>';
+  if(S.voice&&voices.some(v=>v.name===S.voice))sel.value=S.voice;
+  else{const pref=voices.find(v=>/natural|neural|online/i.test(v.name)&&/en-US/i.test(v.lang))||voices.find(v=>/en-US/i.test(v.lang));if(pref)sel.value=pref.name}
+}
+if(synth){loadVoices();synth.onvoiceschanged=loadVoices}
+$('voice').onchange=e=>{S.voice=e.target.value;saveS();sayRaw('Hi, this is how the caller will sound.',1)};
+function sayRaw(text,rate){
+  return new Promise(res=>{
+    if(!synth){setTimeout(res,text.split(' ').length*380/rate);return}
+    const u=new SpeechSynthesisUtterance(text);
+    const v=voices.find(v=>v.name===$('voice').value);if(v)u.voice=v;
+    u.rate=rate;u.pitch=1;
+    let done=false;const fin=()=>{if(!done){done=true;clearTimeout(t);res()}};
+    u.onend=fin;u.onerror=fin;
+    const t=setTimeout(fin,(text.split(' ').length/2.2/rate)*1000+2500);
+    synth.speak(u);
+  });
+}
+async function speak(text,rate){
+  for(const s of text.split(/(?<=[.!?])\s+/)){if(aborted)return;await sayRaw(s,rate)}
+}
+
+// ---------- mic ----------
+let mic=null;
+async function micInit(){
+  if(mic)return mic.ok;
+  try{
+    const st=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}});
+    const C=window.AudioContext||window.webkitAudioContext,ctx=new C(),an=ctx.createAnalyser();an.fftSize=1024;
+    ctx.createMediaStreamSource(st).connect(an);
+    mic={ok:true,ctx,an,buf:new Float32Array(an.fftSize),floor:.01};
+  }catch(e){mic={ok:false}}
+  return mic.ok;
+}
+function rms(){mic.an.getFloatTimeDomainData(mic.buf);let s=0;for(const x of mic.buf)s+=x*x;return Math.sqrt(s/mic.buf.length)}
+async function calibrate(){if(!mic?.ok)return;if(mic.ctx.state!=='running')await mic.ctx.resume();let a=[];for(let i=0;i<12;i++){a.push(rms());await sleep(50)}a.sort((x,y)=>x-y);mic.floor=a[Math.floor(a.length/2)]||.005}
+
+// ---------- matching ----------
+function lev(a,b){if(Math.abs(a.length-b.length)>1)return 2;const m=[...Array(b.length+1).keys()];for(let i=1;i<=a.length;i++){let p=m[0];m[0]=i;for(let j=1;j<=b.length;j++){const t=m[j];m[j]=Math.min(m[j]+1,m[j-1]+1,p+(a[i-1]===b[j-1]?0:1));p=t}}return m[b.length]}
+function hit(notes,matchers){
+  const low=notes.toLowerCase(),words=low.split(/[^a-z0-9]+/).filter(Boolean);
+  return matchers.some(m=>{
+    if(m.startsWith('/')){const body=m.slice(1,m.lastIndexOf('/'));return new RegExp(body,'i').test(low)}
+    return m.toLowerCase().split(/\s+/).every(w=>words.some(x=>x===w||x===w+'s'||(w.length>=4&&x.startsWith(w))||(w.length>=5&&lev(x,w)<=1)));
+  });
+}
+const strip=n=>n.replace(/^(issue|tried|resolution|next step):/gim,'');
+
+// ---------- call ----------
+let C=null,aborted=false;
+function pick(level){
+  const passed=P.passed[level]||[];
+  let pool=SCENARIOS.filter(s=>!passed.includes(s.id)&&s.id!==C?.sc.id);
+  if(!pool.length)pool=SCENARIOS.filter(s=>s.id!==C?.sc.id);
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+async function startCall(level,sc){
+  const L=LEVELS[level];sc=sc||pick(level);aborted=false;
+  if(synth)synth.cancel();
+  C={level,sc,L,repeats:0,repReq:false,last:'',speakWin:[],typed:0,start:0,end:0,done:0,caps:S.caps,said:[]};
+  $('cTitle').textContent='Incoming call';$('cLevel').textContent=`Level ${level} · ${L.name}`;
+  const ta=$('notes');ta.value=TEMPLATE;ta.readOnly=false;ta.focus();ta.setSelectionRange(7,7);
+  ['done','lock','micBox','progBox','wave'].forEach(i=>$(i).hidden=true);
+  $('say').textContent='';$('cap').textContent='';$('repNote').textContent='';$('doneNote').textContent='';$('repeat').disabled=true;
+  $('who').className='who';$('who').textContent='Connecting…';
+  show('call');ta.focus();
+  if(L.speak){await micInit();await calibrate();}
+  let seq=sc.lines.map(x=>x.slice());
+  if(L.curve)seq.splice(sc.curve.after+1,0,['c',sc.curve.text]);
+  C.seq=seq;C.start=Date.now();
+  for(const [who,text] of seq){
+    if(aborted)return;
+    if(who==='c'){await callerSays(text)}
+    else if(L.speak){await agentSays(text)}
+    else{C.said.push(['a',text]);await sleep(1300)}
+    while(C.repReq&&!aborted){C.repReq=false;$('repNote').textContent='';await callerSays(C.last,true)}
+  }
+  if(aborted)return;
+  endCall();
+}
+async function callerSays(text,isRepeat){
+  $('who').className='who c';$('who').textContent=isRepeat?'Caller (repeating)':'Caller';
+  $('say').textContent='';$('wave').hidden=false;$('micBox').hidden=true;$('progBox').hidden=true;
+  $('cap').textContent=C.caps?text:'';
+  $('repeat').disabled=true;
+  if(!isRepeat)C.said.push(['c',text]);
+  await speak(text,C.L.rate);
+  C.last=text;$('wave').hidden=true;$('repeat').disabled=false;
+  await sleep(350);
+}
+async function agentSays(text){
+  C.said.push(['a',text]);
+  $('who').className='who a';$('who').textContent='You: say this out loud';
+  $('say').textContent=text;$('cap').textContent='';$('wave').hidden=true;
+  const words=text.split(' ').length,dur=Math.max(3000,words/2.6*1000)+900;
+  $('progBox').hidden=false;$('micBox').hidden=!mic?.ok;
+  const t0=Date.now();let n=0,on=0;
+  const thr=mic?.ok?Math.max(.012,mic.floor*3):0;
+  while(Date.now()-t0<dur&&!aborted){
+    const p=(Date.now()-t0)/dur;$('prog').style.width=(p*100)+'%';
+    if(mic?.ok){const r=rms();n++;if(r>thr)on++;$('micM').style.width=Math.min(100,r/thr*35)+'%'}
+    await sleep(50);
+  }
+  C.speakWin.push(mic?.ok&&n?on/n:null);
+  $('prog').style.width='0';
+}
+function endCall(){
+  C.end=Date.now();
+  $('who').className='who e';$('who').textContent='Call ended';
+  $('say').textContent='Finish your notes.';$('cap').textContent='';
+  $('micBox').hidden=true;$('progBox').hidden=true;$('wave').hidden=true;$('repeat').disabled=true;
+  $('done').hidden=false;$('notes').focus();
+  if(C.L.lock){
+    $('lock').hidden=false;
+    const iv=setInterval(()=>{
+      if(!C||C.done||aborted){clearInterval(iv);return}
+      const left=C.L.lock-(Date.now()-C.end)/1000;
+      $('lock').textContent=fmt(Math.ceil(left));$('lock').style.color=left<=10?'var(--bad)':'';
+      if(left<=0){clearInterval(iv);$('notes').readOnly=true;$('doneNote').textContent='Time is up. Your notes are locked.';setTimeout(finish,900)}
+    },200);
+  }
+}
+$('notes').addEventListener('input',e=>{if(C&&!C.end&&e.inputType&&e.inputType.startsWith('insert'))C.typed+=(e.data||'').length||1});
+$('notes').addEventListener('keydown',e=>{
+  if(e.key==='Tab'){e.preventDefault();const ta=e.target,v=ta.value,pos=ta.selectionStart;const nl=v.indexOf('\n',pos);const at=nl<0?v.length:nl;const nextColon=v.indexOf(': ',at);if(nextColon>=0){ta.setSelectionRange(nextColon+2,nextColon+2);const lineEnd=v.indexOf('\n',nextColon);ta.setSelectionRange(lineEnd<0?v.length:lineEnd,lineEnd<0?v.length:lineEnd)}}
+});
+$('repeat').onclick=()=>{if(!C||C.end)return;C.repeats++;C.repReq=true;$('repeat').disabled=true;$('repNote').textContent='The caller will repeat that next.'};
+$('done').onclick=()=>finish();
+$('quit').onclick=()=>{aborted=true;if(synth)synth.cancel();C=null;home()};
+document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.key==='Enter'&&!$('call').hidden&&C?.end)finish()});
+
+function finish(){
+  if(!C||C.done)return;C.done=Date.now();
+  const notes=$('notes').value,body=strip(notes);
+  const facts=C.sc.facts.map(f=>[f[0],hit(body,f[1])]);
+  if(C.L.curve)facts.push([C.sc.curveFact[0],hit(body,C.sc.curveFact[1])]);
+  const got=facts.filter(f=>f[1]).length,pct=Math.round(100*got/facts.length);
+  const mins=Math.max(.25,(C.end-C.start)/60000),wpm=Math.round(C.typed/5/mins);
+  const wrap=(C.done-C.end)/1000;
+  const filled=['issue','tried','resolution','next step'].filter(h=>{const m=notes.match(new RegExp('^'+h+':(.*)$','im'));return m&&m[1].trim().length>=3}).length;
+  const sw=C.speakWin.filter(x=>x!==null);const speakPct=sw.length?Math.round(100*sw.reduce((a,b)=>a+b,0)/sw.length):null;
+  const reasons=[];
+  if(pct<80)reasons.push(`captured ${pct}% of key facts (need 80%)`);
+  if(C.repeats>1)reasons.push(`asked for ${C.repeats} repeats (max 1)`);
+  if(C.caps)reasons.push('captions were on');
+  if(C.L.speak&&speakPct!==null&&speakPct<35)reasons.push(`the mic barely heard you during your lines (${speakPct}%)`);
+  const pass=!reasons.length;
+  if(pass){const a=P.passed[C.level];if(!a.includes(C.sc.id))a.push(C.sc.id)}
+  P.history.push({t:Date.now(),l:C.level,id:C.sc.id,pct,wpm,wrap:Math.round(wrap),pass});if(P.history.length>200)P.history.shift();
+  saveP();
+  const nextUnlocked=pass&&C.level<4&&P.passed[C.level].length===2;
+  $('verdict').className='verdict '+(pass?'ok':'no');
+  $('verdict').textContent=pass?(nextUnlocked?`Passed. Level ${C.level+1} unlocked!`:'Passed.'):'Not a pass yet.';
+  $('why').textContent=pass?`${C.sc.title} · Level ${C.level}`:`${C.sc.title} · Level ${C.level}: ${reasons.join('; ')}.`;
+  const cells=[[`${got}/${facts.length}`,'key facts'],[wpm,'wpm during call'],[fmt(wrap),'notes finished after hang-up'],[`${filled}/4`,'template sections filled'],[C.repeats,'repeats']];
+  if(C.L.speak)cells.push([speakPct===null?'n/a':speakPct+'%','talking during your lines']);
+  $('resGrid').innerHTML=cells.map(c=>`<div><b>${c[0]}</b><span>${c[1]}</span></div>`).join('');
+  $('factList').innerHTML=facts.map(f=>`<li class="${f[1]?'':'miss'}">${esc(f[0])}</li>`).join('');
+  $('yourNotes').textContent=notes;
+  $('tx').innerHTML=C.said.map(s=>`<p class="${s[0]}"><b>${s[0]==='c'?'Caller':'You'}:</b> ${esc(s[1])}</p>`).join('');
+  C.summary=`Call Notes Trainer, Level ${C.level} (${C.sc.title}): ${pass?'PASS':'not a pass'}. Facts ${got}/${facts.length}, ${wpm} wpm, notes done ${fmt(wrap)} after hang-up, ${C.repeats} repeats.`;
+  show('results');
+}
+$('next').onclick=()=>{const l=C.level;const lv=(P.passed[l].length>=2&&l<4&&unlocked(l+1)&&P.passed[l+1].length<2)?l+1:l;startCall(lv)};
+$('retry').onclick=()=>startCall(C.level,C.sc);
+$('toHome').onclick=home;
+$('copy').onclick=()=>{navigator.clipboard?.writeText(C.summary);$('copy').textContent='Copied'; setTimeout(()=>$('copy').textContent='Copy results',1500)};
+
+// ---------- typing test ----------
+const PASSAGE="The caller said her laptop will not connect to the VPN from home. She already restarted it twice and gets error 809. We tested on her phone hotspot and it connected right away, so the home router is the likely cause. She will restart the router tonight and call back if it still fails tomorrow morning. Ticket updated and set to pending user.";
+let T=null;
+function typing(){
+  T={start:0,iv:null};$('tIn').value='';$('tIn').disabled=false;$('tRes').hidden=true;$('tClock').textContent='1:00';
+  drawP('');show('typing');$('tIn').focus();
+}
+function drawP(v){
+  let h='';for(let i=0;i<PASSAGE.length;i++){const ch=esc(PASSAGE[i]);if(i<v.length)h+=`<span class="${v[i]===PASSAGE[i]?'ok':'bad'}">${ch}</span>`;else if(i===v.length)h+=`<span class="cur">${ch}</span>`;else h+=`<span class="todo">${ch}</span>`}
+  $('passage').innerHTML=h;
+}
+$('tIn').addEventListener('input',e=>{
+  const v=e.target.value;
+  if(!T.start&&v.length){T.start=Date.now();T.iv=setInterval(()=>{const l=60-(Date.now()-T.start)/1000;$('tClock').textContent=fmt(Math.ceil(l));if(l<=0)endTyping()},200)}
+  drawP(v);if(v.length>=PASSAGE.length)endTyping();
+});
+function endTyping(){
+  if(!T||T.ended)return;T.ended=true;clearInterval(T.iv);$('tIn').disabled=true;
+  const v=$('tIn').value,secs=Math.min(60,(Date.now()-T.start)/1000)||60;let ok=0;for(let i=0;i<v.length;i++)if(v[i]===PASSAGE[i])ok++;
+  const wpm=Math.round(ok/5/(secs/60)),acc=v.length?Math.round(100*ok/v.length):0;
+  if(!P.typing||wpm>P.typing.wpm)P.typing={wpm,acc};saveP();
+  const msg=wpm>=45?'Strong. You have room to focus on listening. Go straight to the mock calls.':wpm>=35?'Good enough to start the mock calls. Your speed will climb with practice.':'Start with 10 minutes a day of typing practice (free at typing.com or monkeytype.com) for two weeks, then come back. Below about 35 wpm, typing takes too much of your attention for this skill.';
+  $('tRes').innerHTML=`<div class="big">${wpm} wpm</div><p>${acc}% accuracy</p><p>${msg}</p><div class="bar"><button class="btn ghost" onclick="document.getElementById('goType').click()">Try again</button><button class="btn" id="tHome">Back to levels</button></div>`;
+  $('tRes').hidden=false;$('tHome').onclick=home;
+}
+$('goType').onclick=typing;$('typeBack').onclick=()=>{if(T)clearInterval(T.iv);home()};
+
+window.__cnt={get C(){return C},get P(){return P},hit,strip};
+home();
+})();
+</script>
+</body>
+</html>

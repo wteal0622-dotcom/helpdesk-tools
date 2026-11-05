@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0f1720">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ACW Timer">
+<title>ACW Timer</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+:root{--bg:#0f1720;--card:#18222e;--line:#263342;--txt:#e8eef4;--dim:#8a9aab;--go:#22c55e;--go2:#15803d;--av:#3b82f6;--warn:#f59e0b;--bad:#ef4444}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html,body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+body{min-height:100vh;min-height:100dvh;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);transition:background .25s}
+body.warn{background:#3a2a06}
+body.over{background:#3d0d0d}
+body.flash{animation:flash .5s 3}
+@keyframes flash{50%{background:#7a5b0a}}
+body.over.flash{animation:flashr .5s 3}
+@keyframes flashr{50%{background:#8b1a1a}}
+.wrap{max-width:480px;margin:0 auto;padding:12px 16px 32px}
+header{display:flex;align-items:center;justify-content:space-between;gap:8px}
+h1{font-size:18px;margin:0;font-weight:700;letter-spacing:.2px}
+.icons{display:flex;gap:8px}
+.ibtn{background:var(--card);border:1px solid var(--line);color:var(--txt);border-radius:12px;height:44px;min-width:44px;padding:0 12px;font-size:15px;display:flex;align-items:center;gap:6px;cursor:pointer}
+.ibtn.muted{color:var(--warn);border-color:#5a4410}
+.ibtn svg{width:20px;height:20px}
+.mode{margin:18px 0 0;text-align:center;font-size:15px;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:1.5px}
+.time{font-variant-numeric:tabular-nums;text-align:center;font-size:min(30vw,132px);font-weight:700;line-height:1;margin:8px 0 6px;letter-spacing:-2px}
+.time.idle{color:var(--dim)}
+.time.warn{color:var(--warn)}
+.time.over{color:var(--bad)}
+.sub{text-align:center;color:var(--dim);font-size:15px;min-height:20px}
+.bar{height:8px;background:var(--line);border-radius:8px;overflow:hidden;margin:16px 0 18px}
+.bar i{display:block;height:100%;width:0;background:var(--go);transition:width .2s linear}
+.bar.warn i{background:var(--warn)}.bar.over i{background:var(--bad)}
+.main{width:100%;border:0;border-radius:20px;padding:30px 12px;font-size:26px;font-weight:800;color:#fff;background:var(--go);box-shadow:0 6px 0 var(--go2);cursor:pointer;letter-spacing:.3px;touch-action:manipulation}
+.main:active{transform:translateY(3px);box-shadow:0 3px 0 var(--go2)}
+.main small{display:block;font-size:14px;font-weight:600;opacity:.85;margin-top:4px;letter-spacing:0}
+.main.av{background:var(--av);box-shadow:0 6px 0 #1d4ed8}
+.main.av:active{box-shadow:0 3px 0 #1d4ed8}
+.row{display:flex;gap:10px;margin-top:14px}
+.sec{flex:1;background:var(--card);border:1px solid var(--line);color:var(--txt);border-radius:14px;padding:16px 8px;font-size:17px;font-weight:700;cursor:pointer;touch-action:manipulation}
+.sec span{display:block;font-size:13px;color:var(--dim);font-weight:500;margin-top:2px}
+.sec.ghost{background:transparent;color:var(--dim);font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin-top:18px}
+.card h2{font-size:13px;text-transform:uppercase;letter-spacing:1.2px;color:var(--dim);margin:0 0 10px;font-weight:700}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
+.stats b{display:block;font-size:24px;font-variant-numeric:tabular-nums}
+.stats span{font-size:12px;color:var(--dim)}
+.recent{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.recent em{font-style:normal;font-variant-numeric:tabular-nums;font-size:13px;padding:3px 8px;border-radius:8px;background:#123222;color:#86efac}
+.recent em.o{background:#3a1212;color:#fca5a5}
+.week{font-size:14px;color:var(--dim);margin-top:10px}
+details{margin-top:18px;color:var(--dim);font-size:15px;line-height:1.5}
+summary{cursor:pointer;color:var(--txt);font-weight:600}
+details ol{padding-left:20px;margin:8px 0}
+.foot{text-align:center;color:#5d6d7e;font-size:12px;margin-top:22px}
+dialog{background:var(--card);color:var(--txt);border:1px solid var(--line);border-radius:18px;width:min(440px,calc(100% - 24px));padding:0;max-height:90vh}
+dialog::backdrop{background:rgba(0,0,0,.6)}
+.dlg{padding:16px 18px 18px}
+.dlg h3{margin:0 0 6px;font-size:18px}
+.f{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.f label{font-size:15px}
+.f small{display:block;color:var(--dim);font-size:12px;margin-top:2px}
+select,input[type=number]{background:var(--bg);color:var(--txt);border:1px solid var(--line);border-radius:10px;padding:9px 10px;font-size:16px;min-width:110px}
+input[type=number]{width:90px;min-width:0}
+.sw{position:relative;width:52px;height:30px;flex:none}
+.sw input{opacity:0;width:0;height:0}
+.sw b{position:absolute;inset:0;background:var(--line);border-radius:30px;transition:.2s}
+.sw b:before{content:"";position:absolute;width:24px;height:24px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+.sw input:checked+b{background:var(--go)}
+.sw input:checked+b:before{transform:translateX(22px)}
+.dbtns{display:flex;gap:10px;margin-top:16px}
+.dbtns button{flex:1;border-radius:12px;padding:13px;font-size:16px;font-weight:700;border:1px solid var(--line);background:var(--bg);color:var(--txt);cursor:pointer}
+.dbtns .done{background:var(--av);border-color:var(--av);color:#fff}
+.note{font-size:12px;color:var(--dim);margin-top:10px;line-height:1.45}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#0b1118;border:1px solid var(--line);padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90%;text-align:center}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>ACW Timer</h1>
+    <div class="icons">
+      <button class="ibtn" id="mute" aria-label="Mute alarm"></button>
+      <button class="ibtn" id="gear" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+    </div>
+  </header>
+
+  <div class="mode" id="mode">Ready</div>
+  <div class="time idle" id="time">3:00</div>
+  <div class="sub" id="sub"></div>
+  <div class="bar" id="bar"><i id="fill"></i></div>
+
+  <button class="main" id="main">CALL ENDED<small>Start wrap-up timer</small></button>
+  <div class="row" id="row"></div>
+
+  <section class="card" aria-label="Today">
+    <h2>Today</h2>
+    <div class="stats">
+      <div><b id="sN">0</b><span>wrap-ups</span></div>
+      <div><b id="sAvg">–</b><span>average</span></div>
+      <div><b id="sOn">–</b><span>on time</span></div>
+    </div>
+    <div class="recent" id="recent"></div>
+    <div class="week" id="week"></div>
+  </section>
+
+  <details>
+    <summary>How to use</summary>
+    <ol>
+      <li>The second you hang up, tap <b>CALL ENDED</b>.</li>
+      <li>The alarm goes off before your limit (30 seconds by default). That's your cue to wrap up your notes.</li>
+      <li>Tap <b>AVAILABLE</b> when you go back to Available. Your time gets logged.</li>
+      <li>Keep this screen open while you work. It stays awake while a timer runs.</li>
+    </ol>
+    <p><b>Add it to your home screen.</b> On iPhone, tap Share, then Add to Home Screen. On Android, tap the ⋮ menu, then Add to Home screen.</p>
+    <p>No sound on iPhone? Check the ring/silent switch and your volume. Tap the bell to mute the alarm. The screen will still flash.</p>
+  </details>
+
+  <div class="foot"><a href="../" style="color:#8a9aab">More agent tools</a><br>Runs on your phone. No account, and nothing leaves this device.</div>
+</div>
+
+<dialog id="dlg">
+  <form class="dlg" method="dialog" id="form">
+    <h3>Settings</h3>
+    <div class="f"><label for="target">Your ACW limit<small id="autoNote"></small></label>
+      <select id="target">
+        <option value="auto">Auto (goes by date)</option>
+        <option value="180">3:00</option>
+        <option value="165">2:45</option>
+        <option value="150">2:30</option>
+        <option value="custom">Custom…</option>
+      </select></div>
+    <div class="f" id="customRow" hidden><label for="custom">Custom limit (seconds)</label><input type="number" id="custom" min="30" max="900" step="5"></div>
+    <div class="f"><label for="lead">Alarm before limit<small>Time you get to finish your notes</small></label>
+      <select id="lead"><option value="15">15 sec</option><option value="20">20 sec</option><option value="30">30 sec</option><option value="45">45 sec</option><option value="60">60 sec</option></select></div>
+    <div class="f"><label for="brk">Break length</label><select id="brk"><option value="10">10 min</option><option value="15">15 min</option><option value="20">20 min</option></select></div>
+    <div class="f"><label for="lunch">Lunch length</label><select id="lunch"><option value="30">30 min</option><option value="45">45 min</option><option value="60">60 min</option></select></div>
+    <div class="f"><label for="plead">Break/lunch heads-up</label><select id="plead"><option value="60">1 min before</option><option value="120">2 min before</option><option value="180">3 min before</option><option value="300">5 min before</option></select></div>
+    <div class="f"><label for="sound">Alarm sound</label><label class="sw"><input type="checkbox" id="sound"><b></b></label></div>
+    <div class="f"><label for="tone">Sound</label><select id="tone"><option value="beep">Beep</option><option value="chime">Chime</option><option value="buzzer">Buzzer</option></select></div>
+    <div class="f"><label for="vib">Vibrate<small>Android only. iPhones don't allow it.</small></label><label class="sw"><input type="checkbox" id="vib"><b></b></label></div>
+    <div class="dbtns"><button type="button" id="test">Test alarm</button><button type="button" id="clear">Clear today</button></div>
+    <div class="dbtns"><button class="done" value="ok">Done</button></div>
+    <p class="note">Auto limit: 3:00 through Dec 31, 2:45 from Jan 1 to Mar 31, and 2:30 from Apr 1. If your dates are different, pick your limit from the list instead.</p>
+  </form>
+</dialog>
+<div class="toast" id="toast"></div>
+
+<script>
+(()=>{
+const $=s=>document.getElementById(s);
+const DEF={target:'auto',custom:180,lead:30,brk:15,lunch:30,plead:120,sound:true,tone:'beep',vib:true};
+const load=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}};
+let S=Object.assign({},DEF,load('acw.settings',{}));
+let A=load('acw.active',null);           // active timer
+let L=load('acw.log',{});                // {YYYY-MM-DD:[[sec,target],...]}
+const saveS=()=>localStorage.setItem('acw.settings',JSON.stringify(S));
+const saveA=()=>A?localStorage.setItem('acw.active',JSON.stringify(A)):localStorage.removeItem('acw.active');
+const saveL=()=>localStorage.setItem('acw.log',JSON.stringify(L));
+
+const pad=n=>String(n).padStart(2,'0');
+const dkey=(d=new Date())=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const fmt=s=>{s=Math.max(0,Math.round(s));return Math.floor(s/60)+':'+pad(s%60)};
+const autoTarget=(d=new Date())=>{const y=d.getFullYear(),m=d.getMonth();if(y<2027)return 180;if(y===2027&&m<3)return 165;return 150};
+const target=()=>S.target==='auto'?autoTarget():S.target==='custom'?Math.max(30,+S.custom||180):+S.target;
+
+// ---------- sound ----------
+let ctx=null;
+function unlock(){
+  try{if(navigator.audioSession)navigator.audioSession.type='playback'}catch(e){}
+  const C=window.AudioContext||window.webkitAudioContext;
+  if(!ctx&&C)ctx=new C();
+  if(!ctx)return;
+  if(ctx.state!=='running')ctx.resume();
+  const b=ctx.createBuffer(1,1,22050),s=ctx.createBufferSource();s.buffer=b;s.connect(ctx.destination);s.start(0);
+}
+const TONES={beep:{f:[880],type:'square',len:.14,vol:.32},chime:{f:[660,880,1320],type:'sine',len:.35,vol:.7},buzzer:{f:[196],type:'sawtooth',len:.28,vol:.32}};
+function note(f,t0,len,type,vol){
+  const o=ctx.createOscillator(),g=ctx.createGain();o.type=type;o.frequency.value=f;
+  g.gain.setValueAtTime(.0001,t0);g.gain.exponentialRampToValueAtTime(vol,t0+.012);g.gain.exponentialRampToValueAtTime(.0001,t0+len);
+  o.connect(g);g.connect(ctx.destination);o.start(t0);o.stop(t0+len+.05);
+}
+function playSound(reps){
+  if(!ctx)return;if(ctx.state!=='running')ctx.resume();
+  const T=TONES[S.tone]||TONES.beep,gap=T.f.length*.12+T.len+.12;let t=ctx.currentTime+.03;
+  for(let i=0;i<reps;i++){T.f.forEach((f,j)=>note(f,t+i*gap+j*.12,T.len,T.type,T.vol))}
+}
+function alarm(kind){ // warn | end | nag | test
+  const reps={warn:3,end:8,nag:2,test:3}[kind];
+  if(S.sound)playSound(reps);
+  if(S.vib&&navigator.vibrate)navigator.vibrate(kind==='end'?[400,150,400,150,400]:[200,100,200]);
+  document.body.classList.remove('flash');void document.body.offsetWidth;document.body.classList.add('flash');
+}
+
+// ---------- wake lock ----------
+let wl=null;
+async function wake(on){
+  try{
+    if(on&&'wakeLock' in navigator&&!wl){wl=await navigator.wakeLock.request('screen');wl.addEventListener('release',()=>{wl=null})}
+    if(!on&&wl){await wl.release();wl=null}
+  }catch(e){}
+}
+
+// ---------- timer ----------
+function start(mode){
+  unlock();
+  const dur=mode==='acw'?target():(mode==='brk'?S.brk:S.lunch)*60;
+  let lead=mode==='acw'?+S.lead:+S.plead;if(lead>=dur)lead=Math.floor(dur/2);
+  A={mode,start:Date.now(),dur,lead,warned:false,ended:false,last:0};
+  saveA();wake(true);tick();render();
+}
+function stop(log){
+  if(!A)return;
+  if(log&&A.mode==='acw'){
+    const sec=Math.round((Date.now()-A.start)/1000);
+    const k=dkey();(L[k]=L[k]||[]).push([sec,A.dur]);
+    const keys=Object.keys(L).sort();while(keys.length>21)delete L[keys.shift()];
+    saveL();
+    toast(sec<=A.dur?`Logged ${fmt(sec)}. On time.`:`Logged ${fmt(sec)}. ${fmt(sec-A.dur)} over.`);
+  }else if(A.mode!=='acw'&&log){toast('Welcome back.')}
+  A=null;saveA();wake(false);render();
+}
+function tick(){
+  if(!A)return;
+  const now=Date.now(),left=A.dur-(now-A.start)/1000;
+  if(!A.warned&&left<=A.lead&&left>0){A.warned=true;saveA();alarm('warn')}
+  if(!A.ended&&left<=0){A.ended=true;A.warned=true;A.last=now;saveA();alarm('end')}
+  if(A.ended){
+    const over=-left;
+    if(over<=60&&now-A.last>=10000){A.last=now;saveA();alarm('nag')}
+    if(over>=(A.mode==='acw'?600:1800)){const m=A.mode;A=null;saveA();wake(false);render();toast(m==='acw'?'Timer ran 10+ minutes over, so it stopped without logging.':'Timer stopped.');return}
+  }
+  draw(left);
+}
+function draw(left){
+  const t=$('time'),bar=$('bar'),b=document.body;
+  const state=left<=0?'over':left<=A.lead?'warn':'run';
+  t.className='time'+(state==='run'?'':' '+state);
+  bar.className='bar'+(state==='run'?'':' '+state);
+  b.classList.toggle('warn',state==='warn');b.classList.toggle('over',state==='over');
+  t.textContent=left<=0?'+'+fmt(-left):fmt(Math.ceil(left));
+  $('fill').style.width=Math.min(100,100*(A.dur-left)/A.dur)+'%';
+  const lbl=A.mode==='acw'?'Wrap-up':A.mode==='brk'?'Break':'Lunch';
+  $('mode').textContent=state==='over'?lbl+' · over':state==='warn'?lbl+(A.mode==='acw'?' · wrap it up':' · head back'):lbl;
+  $('sub').textContent=state==='over'?(A.mode==='acw'?'Get back to Available':'Time to be back'):`Limit ${fmt(A.dur)} · alarm at ${fmt(A.dur-A.lead)}`;
+}
+function render(){
+  const main=$('main'),row=$('row'),b=document.body;
+  if(!A){
+    b.classList.remove('warn','over');
+    $('mode').textContent='Ready';
+    const tg=target();$('time').className='time idle';$('time').textContent=fmt(tg);
+    $('bar').className='bar';$('fill').style.width='0';
+    $('sub').textContent=`Limit ${fmt(tg)} · alarm at ${fmt(tg-Math.min(+S.lead,tg/2))}`;
+    main.className='main';main.innerHTML='CALL ENDED<small>Start wrap-up timer</small>';
+    row.innerHTML=`<button class="sec" data-a="brk">Break<span>${S.brk} min</span></button><button class="sec" data-a="lunch">Lunch<span>${S.lunch} min</span></button>`;
+  }else{
+    main.className='main av';
+    main.innerHTML=A.mode==='acw'?'AVAILABLE<small>I\'m back on Available</small>':'I\'M BACK<small>Back from '+(A.mode==='brk'?'break':'lunch')+'</small>';
+    row.innerHTML=`<button class="sec ghost" data-a="cancel">${A.mode==='acw'?'Cancel (don\'t log)':'Cancel'}</button>`;
+    tick();
+  }
+  const m=$('mute');m.classList.toggle('muted',!S.sound);
+  m.innerHTML=S.sound
+    ?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>'
+    :'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13.7 21a2 2 0 0 1-3.4 0"/><path d="M18.6 13A17.9 17.9 0 0 1 18 8"/><path d="M6.3 6.3A6 6 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.3-5"/><path d="M1 1l22 22"/></svg>Muted';
+  m.setAttribute('aria-label',S.sound?'Mute alarm':'Unmute alarm');
+  stats();
+}
+function stats(){
+  const today=L[dkey()]||[];
+  const n=today.length,avg=n?today.reduce((a,x)=>a+x[0],0)/n:0,on=today.filter(x=>x[0]<=x[1]).length;
+  $('sN').textContent=n;$('sAvg').textContent=n?fmt(avg):'–';$('sOn').textContent=n?Math.round(100*on/n)+'%':'–';
+  $('recent').innerHTML=today.slice(-12).reverse().map(x=>`<em class="${x[0]>x[1]?'o':''}">${fmt(x[0])}</em>`).join('');
+  let wn=0,ws=0,won=0;
+  for(let i=0;i<7;i++){const d=new Date();d.setDate(d.getDate()-i);(L[dkey(d)]||[]).forEach(x=>{wn++;ws+=x[0];if(x[0]<=x[1])won++})}
+  $('week').textContent=wn?`Last 7 days: ${wn} wrap-ups · avg ${fmt(ws/wn)} · ${Math.round(100*won/wn)}% on time`:'';
+}
+let tt;function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),2600)}
+
+// ---------- events ----------
+$('main').addEventListener('click',()=>{unlock();A?stop(true):start('acw')});
+$('row').addEventListener('click',e=>{const a=e.target.closest('button')?.dataset.a;if(!a)return;unlock();if(a==='cancel'){stop(false);toast('Canceled. Not logged.')}else start(a)});
+$('mute').addEventListener('click',()=>{S.sound=!S.sound;saveS();if(S.sound)unlock();render();toast(S.sound?'Alarm sound on':'Alarm muted. The screen will still flash.')});
+document.addEventListener('keydown',e=>{if(e.code==='Space'&&!$('dlg').open){e.preventDefault();$('main').click()}});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){if(A){wake(true);unlock()}tick()}});
+setInterval(tick,200);
+
+// settings
+const F=['target','custom','lead','brk','lunch','plead','tone'];
+function fillForm(){
+  F.forEach(k=>$(k).value=S[k]);$('sound').checked=S.sound;$('vib').checked=S.vib;
+  $('customRow').hidden=S.target!=='custom';
+  $('autoNote').textContent='Auto today: '+fmt(autoTarget());
+}
+$('gear').addEventListener('click',()=>{unlock();fillForm();$('dlg').showModal()});
+$('form').addEventListener('change',()=>{
+  F.forEach(k=>{S[k]=['target','tone'].includes(k)?$(k).value:+$(k).value});
+  S.sound=$('sound').checked;S.vib=$('vib').checked;saveS();
+  $('customRow').hidden=S.target!=='custom';if(!A)render();else{$('mute').classList.toggle('muted',!S.sound)}
+});
+$('test').addEventListener('click',()=>{unlock();const was=S.sound;S.sound=true;alarm('test');S.sound=was;if(!was)toast('Your alarm is muted. This is how it sounds when it\'s on.')});
+$('clear').addEventListener('click',()=>{if(confirm('Clear today\'s wrap-up times?')){delete L[dkey()];saveL();stats();toast('Today cleared.')}});
+$('dlg').addEventListener('close',render);
+
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+render();
+if(A)wake(true);
+window.__acw={get A(){return A},get S(){return S},get L(){return L}};
+})();
+</script>
+</body>
+</html>
