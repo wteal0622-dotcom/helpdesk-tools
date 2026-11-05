@@ -82,7 +82,7 @@ select{background:#0b1118;color:var(--txt);border:1px solid var(--line);border-r
   <div class="top">
     <div>
       <h1>Call Notes Trainer</h1>
-      <p class="dim">Practice taking notes while the caller talks, then while <i>you</i> talk. Use headphones. Each mock call takes about 2 minutes.</p>
+      <p class="dim">Practice taking notes while the caller talks, then while <i>you</i> talk. Use headphones and run the sound check below first. Each mock call takes about 2 minutes.</p>
     </div>
     <a href="../" class="dim" style="white-space:nowrap">All tools</a>
   </div>
@@ -108,7 +108,7 @@ select{background:#0b1118;color:var(--txt);border:1px solid var(--line);border-r
 
   <h2>Settings</h2>
   <div class="card">
-    <div class="set"><span>Caller voice</span><select id="voice"></select></div>
+    <div class="set"><span>Sound check <span class="dim">(do this first, with your headphones on)</span></span><span><button class="btn ghost" id="sndTest">Play test sound</button> <span id="sndMsg" class="dim"></span></span></div>
     <div class="set"><span>Show captions while the caller talks <span class="dim">(easier, but captioned calls don't count toward unlocking)</span></span><input type="checkbox" id="caps"></div>
     <div class="set"><span>Unlock all levels <span class="dim">(team lead demo)</span></span><input type="checkbox" id="unlockAll"></div>
     <div class="set"><span>Progress is saved in this browser only.</span><button class="btn ghost" id="reset">Reset progress</button></div>
@@ -138,6 +138,7 @@ select{background:#0b1118;color:var(--txt);border:1px solid var(--line);border-r
       <div class="wave" id="wave" hidden><i></i><i></i><i></i><i></i><i></i></div>
       <div class="say" id="say"></div>
       <div class="cap" id="cap"></div>
+      <div class="dim" id="audioWarn" hidden style="font-size:13px">Couldn't play the recorded caller, so it's using your browser's voice and showing the words. Check your volume, then run the sound check on the home page.</div>
       <div id="micBox" hidden>
         <div class="dim" style="font-size:13px;margin-bottom:4px">Your voice</div>
         <div class="meter"><i id="micM"></i></div>
@@ -206,7 +207,7 @@ function home(){
   $('caps').checked=S.caps;$('unlockAll').checked=S.unlockAll;
   show('home');
 }
-$('levels').addEventListener('click',e=>{const l=+e.target.dataset.l;if(l)startCall(l)});
+$('levels').addEventListener('click',e=>{const l=+e.target.dataset.l;if(l){unlockAudio();startCall(l)}});
 $('caps').onchange=e=>{S.caps=e.target.checked;saveS()};
 $('unlockAll').onchange=e=>{S.unlockAll=e.target.checked;saveS();home()};
 $('reset').onclick=()=>{if(confirm('Reset all your progress?')){P={passed:{1:[],2:[],3:[],4:[]},best:{},typing:null,history:[]};saveP();home()}};
@@ -217,17 +218,36 @@ let voices=[];
 function loadVoices(){
   if(!synth)return;
   voices=synth.getVoices().filter(v=>/^en/i.test(v.lang));
-  const sel=$('voice');sel.innerHTML=voices.map(v=>`<option value="${esc(v.name)}">${esc(v.name)}</option>`).join('')||'<option>Default voice</option>';
-  if(S.voice&&voices.some(v=>v.name===S.voice))sel.value=S.voice;
-  else{const pref=voices.find(v=>/natural|neural|online/i.test(v.name)&&/en-US/i.test(v.lang))||voices.find(v=>/en-US/i.test(v.lang));if(pref)sel.value=pref.name}
+  S.voice=(voices.find(v=>/natural|neural|online/i.test(v.name)&&/en-US/i.test(v.lang))||voices.find(v=>/en-US/i.test(v.lang))||{}).name||'';
 }
 if(synth){loadVoices();synth.onvoiceschanged=loadVoices}
-$('voice').onchange=e=>{S.voice=e.target.value;saveS();sayRaw('Hi, this is how the caller will sound.',1)};
+// ---------- recorded caller audio ----------
+const SILENT='data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+const player=new Audio();player.preload='auto';
+function unlockAudio(){try{player.muted=true;player.src=SILENT;const p=player.play();if(p)p.then(()=>{player.pause();player.muted=false}).catch(()=>{player.muted=false})}catch(e){player.muted=false}}
+function playClip(src,rate,text){
+  return new Promise(res=>{
+    let done=false;const fin=(ok)=>{if(done)return;done=true;clearTimeout(t);player.onended=player.onerror=null;res(ok)};
+    const t=setTimeout(()=>fin(true),(text.split(' ').length/2/rate)*1000+6000);
+    player.muted=false;player.src=src;player.playbackRate=rate;try{player.preservesPitch=true}catch(e){}
+    player.onended=()=>fin(true);
+    player.onerror=()=>fin(false);
+    const p=player.play();if(p)p.catch(()=>fin(false));
+  });
+}
+async function callerAudio(src,text,rate){
+  const ok=await playClip(src,rate,text);
+  if(!ok&&!aborted){ // recorded clip blocked or missing: fall back to the browser voice, and show the words
+    $('cap').textContent=text;$('audioWarn').hidden=false;
+    await speak(text,rate);
+  }
+}
+$('sndTest').onclick=async()=>{unlockAudio();$('sndMsg').textContent='Playing…';const ok=await playClip('audio/test.mp3',1,'sound check one two three four five');$('sndMsg').textContent=ok?'Did you hear a voice? If not, check your volume and which speaker or headset is selected.':'Your browser blocked the sound. Check your volume, or try Chrome or Edge.'};
 function sayRaw(text,rate){
   return new Promise(res=>{
     if(!synth){setTimeout(res,text.split(' ').length*380/rate);return}
     const u=new SpeechSynthesisUtterance(text);
-    const v=voices.find(v=>v.name===$('voice').value);if(v)u.voice=v;
+    const v=voices.find(v=>v.name===S.voice);if(v)u.voice=v;
     u.rate=rate;u.pitch=1;
     let done=false;const fin=()=>{if(!done){done=true;clearTimeout(t);res()}};
     u.onend=fin;u.onerror=fin;
@@ -280,31 +300,31 @@ async function startCall(level,sc){
   $('cTitle').textContent='Incoming call';$('cLevel').textContent=`Level ${level} · ${L.name}`;
   const ta=$('notes');ta.value=TEMPLATE;ta.readOnly=false;ta.focus();ta.setSelectionRange(7,7);
   ['done','lock','micBox','progBox','wave'].forEach(i=>$(i).hidden=true);
-  $('say').textContent='';$('cap').textContent='';$('repNote').textContent='';$('doneNote').textContent='';$('repeat').disabled=true;
+  $('say').textContent='';$('cap').textContent='';$('audioWarn').hidden=true;$('repNote').textContent='';$('doneNote').textContent='';$('repeat').disabled=true;
   $('who').className='who';$('who').textContent='Connecting…';
   show('call');ta.focus();
   if(L.speak){await micInit();await calibrate();}
-  let seq=sc.lines.map(x=>x.slice());
-  if(L.curve)seq.splice(sc.curve.after+1,0,['c',sc.curve.text]);
+  let ci=0;let seq=sc.lines.map(x=>x[0]==='c'?[x[0],x[1],`audio/${sc.id}/c${ci++}.mp3`]:x.slice());
+  if(L.curve)seq.splice(sc.curve.after+1,0,['c',sc.curve.text,`audio/${sc.id}/curve.mp3`]);
   C.seq=seq;C.start=Date.now();
-  for(const [who,text] of seq){
+  for(const [who,text,src] of seq){
     if(aborted)return;
-    if(who==='c'){await callerSays(text)}
+    if(who==='c'){await callerSays(text,false,src)}
     else if(L.speak){await agentSays(text)}
     else{C.said.push(['a',text]);await sleep(1300)}
-    while(C.repReq&&!aborted){C.repReq=false;$('repNote').textContent='';await callerSays(C.last,true)}
+    while(C.repReq&&!aborted){C.repReq=false;$('repNote').textContent='';await callerSays(C.last,true,C.lastSrc)}
   }
   if(aborted)return;
   endCall();
 }
-async function callerSays(text,isRepeat){
+async function callerSays(text,isRepeat,src){
   $('who').className='who c';$('who').textContent=isRepeat?'Caller (repeating)':'Caller';
   $('say').textContent='';$('wave').hidden=false;$('micBox').hidden=true;$('progBox').hidden=true;
   $('cap').textContent=C.caps?text:'';
   $('repeat').disabled=true;
   if(!isRepeat)C.said.push(['c',text]);
-  await speak(text,C.L.rate);
-  C.last=text;$('wave').hidden=true;$('repeat').disabled=false;
+  await callerAudio(src,text,C.L.rate);
+  C.last=text;C.lastSrc=src;$('wave').hidden=true;$('repeat').disabled=false;
   await sleep(350);
 }
 async function agentSays(text){
@@ -345,7 +365,7 @@ $('notes').addEventListener('keydown',e=>{
 });
 $('repeat').onclick=()=>{if(!C||C.end)return;C.repeats++;C.repReq=true;$('repeat').disabled=true;$('repNote').textContent='The caller will repeat that next.'};
 $('done').onclick=()=>finish();
-$('quit').onclick=()=>{aborted=true;if(synth)synth.cancel();C=null;home()};
+$('quit').onclick=()=>{aborted=true;player.pause();if(synth)synth.cancel();C=null;home()};
 document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.key==='Enter'&&!$('call').hidden&&C?.end)finish()});
 
 function finish(){
@@ -380,8 +400,8 @@ function finish(){
   C.summary=`Call Notes Trainer, Level ${C.level} (${C.sc.title}): ${pass?'PASS':'not a pass'}. Facts ${got}/${facts.length}, ${wpm} wpm, notes done ${fmt(wrap)} after hang-up, ${C.repeats} repeats.`;
   show('results');
 }
-$('next').onclick=()=>{const l=C.level;const lv=(P.passed[l].length>=2&&l<4&&unlocked(l+1)&&P.passed[l+1].length<2)?l+1:l;startCall(lv)};
-$('retry').onclick=()=>startCall(C.level,C.sc);
+$('next').onclick=()=>{unlockAudio();const l=C.level;const lv=(P.passed[l].length>=2&&l<4&&unlocked(l+1)&&P.passed[l+1].length<2)?l+1:l;startCall(lv)};
+$('retry').onclick=()=>{unlockAudio();startCall(C.level,C.sc)};
 $('toHome').onclick=home;
 $('copy').onclick=()=>{navigator.clipboard?.writeText(C.summary);$('copy').textContent='Copied'; setTimeout(()=>$('copy').textContent='Copy results',1500)};
 
